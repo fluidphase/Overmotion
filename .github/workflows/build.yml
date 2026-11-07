@@ -1,0 +1,40 @@
+name: Build APK
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unzip project
+        run: unzip -q overmotion-project.zip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install dependencies
+        working-directory: overmotion
+        run: npm install
+      - name: Bundle three.js locally for offline use
+        working-directory: overmotion
+        run: |
+          cp node_modules/three/build/three.min.js www/three.min.js
+          sed -i 's#https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js#three.min.js#' www/index.html
+      - name: Add Android
+        working-directory: overmotion
+        run: npx cap add android
+      - name: Sync
+        working-directory: overmotion
+        run: npx cap sync android
+      - name: Build APK
+        working-directory: overmotion/android
+        run: chmod +x gradlew && ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Overmotion-debug-apk
+          path: overmotion/android/app/build/outputs/apk/debug/app-debug.apk
